@@ -2,7 +2,7 @@
 
 Este é um sistema web responsivo para controle e gerenciamento de estoque, desenvolvido como projeto acadêmico para o curso de Engenharia de Software (5º Período). O sistema foi construído utilizando tecnologias web padrão (HTML5, CSS3 avançado e JavaScript Vanilla) concentradas em um único arquivo, facilitando a execução e distribuição do protótipo funcional.
 
-## 🚀 Funcionalidades Executadas no Sistema
+## Funcionalidades Executadas no Sistema
 
 O sistema entrega uma experiência interativa completa no modelo de *Single Page Application* (SPA) com controle de estado local:
 
