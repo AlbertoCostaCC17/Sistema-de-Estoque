@@ -29,7 +29,7 @@ O sistema entrega uma experiência interativa completa no modelo de *Single Page
    * Cadastro e edição de locais de armazenamento (Depósitos) contendo localização e colaborador responsável.
    * Monitoramento inteligente de volumetria que calcula quantos produtos diferentes estão armazenados em cada depósito e impede a exclusão de depósitos que ainda possuem itens vinculados.
 
-## 🛠️ Tecnologias Utilizadas
+##  Tecnologias Utilizadas
 
 * **Estruturação**: HTML5 Semântico.
 * **Estilização**: CSS3 customizado utilizando Variáveis CSS (`:root`), layouts estruturados em Grid/Flexbox nativos e design inteiramente responsivo para dispositivos móveis e desktops.
