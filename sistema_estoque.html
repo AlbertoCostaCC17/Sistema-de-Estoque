@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Gerenciamento de Estoque</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f4;
+    --bg-card: #ffffff;
+    --bg-sidebar: #1e1b2e;
+    --bg-sidebar-hover: #2a2640;
+    --bg-sidebar-active: #3d3870;
+    --accent: #7F77DD;
+    --accent-dark: #534AB7;
+    --text: #1c1917;
+    --text-muted: #78716c;
+    --text-light: #a8a29e;
+    --border: #e7e5e4;
+    --green: #1D9E75; --green-bg: #EAF3DE; --green-text: #3B6D11;
+    --amber: #BA7517; --amber-bg: #FAEEDA; --amber-text: #854F0B;
+    --red: #A32D2D; --red-bg: #FCEBEB; --red-border: #F09595;
+    --blue: #185FA5; --blue-bg: #E6F1FB; --blue-text: #0C447C;
+    --radius: 8px; --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: var(--text); background: var(--bg); min-height: 100vh; display: flex; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; min-height: 100vh; background: var(--bg-sidebar); color: #c4c2d4; display: flex; flex-direction: column; flex-shrink: 0; position: fixed; top: 0; left: 0; height: 100%; z-index: 10; }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .sidebar-logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .sidebar-logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .sidebar-logo h2 { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.3; }
+  .sidebar-logo p { font-size: 11px; color: #7c7a99; margin-top: 2px; }
+  .sidebar-section { padding: 16px 10px 4px; font-size: 10px; font-weight: 600; color: #5c5a78; letter-spacing: 0.08em; text-transform: uppercase; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin: 1px 8px; border-radius: var(--radius); cursor: pointer; font-size: 13px; color: #9896b5; transition: all 0.15s; user-select: none; }
+  .nav-item svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; }
+  .nav-item:hover { background: var(--bg-sidebar-hover); color: #d4d2e8; }
+  .nav-item.active { background: var(--bg-sidebar-active); color: #fff; font-weight: 500; }
+  .nav-badge { margin-left: auto; background: #D85A30; color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; min-width: 18px; text-align: center; }
+  .sidebar-bottom { margin-top: auto; padding: 16px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 11px; color: #5c5a78; }
+
+  /* MAIN */
+  .main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .topbar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 5; }
+  .topbar-left { display: flex; flex-direction: column; }
+  .topbar-left h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  .topbar-left p { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .content { padding: 24px; flex: 1; }
+
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* METRIC CARDS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); }
+  .metric-card .m-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .metric-card .m-icon svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+  .metric-card .m-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .metric-card .m-value { font-size: 26px; font-weight: 700; margin-top: 2px; line-height: 1.2; }
+  .metric-card .m-sub { font-size: 11px; color: var(--text-light); margin-top: 4px; }
+
+  /* CARDS */
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); margin-bottom: 20px; }
+  .card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-header h3 { font-size: 14px; font-weight: 600; }
+  .card-header p { font-size: 12px; color: var(--text-muted); }
+  .card-body { padding: 16px 18px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; background: #fafaf9; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #fafaf9; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 99px; }
+  .badge-ok { background: var(--green-bg); color: var(--green-text); }
+  .badge-low { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-out { background: var(--red-bg); color: var(--red); }
+  .badge-entrada { background: var(--green-bg); color: var(--green-text); }
+  .badge-saida { background: var(--red-bg); color: var(--red); }
+  .badge-ajuste { background: var(--blue-bg); color: var(--blue-text); }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); transition: all 0.15s; user-select: none; white-space: nowrap; }
+  .btn:hover { background: var(--bg); border-color: #c4c0bc; }
+  .btn:active { transform: scale(0.98); }
+  .btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent-dark); }
+  .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  .btn-success { background: var(--green-bg); color: var(--green-text); border-color: #97C459; }
+  .btn-success:hover { background: #d4edb5; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+  .btn-danger:hover { background: #f5d0d0; }
+  .btn-warning { background: var(--amber-bg); color: var(--amber-text); border-color: #FAC775; }
+  .btn-icon { padding: 6px 8px; }
+
+  /* TOOLBAR */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .search-box { display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 12px; min-width: 240px; }
+  .search-box svg { width: 15px; height: 15px; stroke: var(--text-light); stroke-width: 2; fill: none; flex-shrink: 0; }
+  .search-box input { border: none; outline: none; font-size: 13px; background: transparent; color: var(--text); width: 100%; }
+
+  /* FORMS */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-grid-1 { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .form-group input, .form-group select, .form-group textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--bg-card); color: var(--text); outline: none; font-family: inherit; transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(127,119,221,0.1); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg-card); border-radius: var(--radius-lg); width: 480px; max-width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .modal-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-header h3 { font-size: 15px; font-weight: 600; }
+  .modal-body { padding: 18px 20px; }
+  .modal-footer { padding: 14px 20px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ALERTS */
+  .alert-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius); margin-bottom: 8px; font-size: 13px; }
+  .alert-item svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; flex-shrink: 0; margin-top: 1px; }
+  .alert-danger { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .alert-warning { background: var(--amber-bg); color: var(--amber-text); border: 1px solid #FAC775; }
+  .alert-content strong { font-weight: 600; display: block; margin-bottom: 2px; }
+  .alert-content span { font-size: 12px; opacity: 0.8; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; display: none; align-items: center; gap: 8px; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  #toast.show { display: flex; }
+  #toast svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.5; fill: none; flex-shrink: 0; }
+  #toast.ok { background: var(--green-bg); color: var(--green-text); border: 1px solid #97C459; }
+  #toast.err { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+  /* MISC */
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-light); }
+  .empty-state svg { width: 40px; height: 40px; stroke: var(--text-light); stroke-width: 1.5; fill: none; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; }
+  .sku { font-family: 'Courier New', monospace; font-size: 11px; color: var(--text-muted); background: var(--bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+  .qty-danger { color: var(--red); font-weight: 700; }
+  .qty-warning { color: var(--amber); font-weight: 700; }
+  .qty-ok { color: var(--green); font-weight: 600; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, 1fr); } .two-col { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .sidebar { display: none; } .main { margin-left: 0; } .metrics { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>
+    </div>
+    <h2>Gestão de Estoque</h2>
+    <p>v1.0 — 2026</p>
+  </div>
+  <div class="sidebar-section">Principal</div>
+  <div class="nav-item active" onclick="nav('dashboard')" id="nav-dashboard">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </div>
+  <div class="nav-item" onclick="nav('produtos')" id="nav-produtos">
+    <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
+    Produtos
+  </div>
+  <div class="nav-item" onclick="nav('movimentacoes')" id="nav-movimentacoes">
+    <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    Movimentações
+  </div>
+  <div class="nav-item" onclick="nav('alertas')" id="nav-alertas">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    Alertas <span class="nav-badge" id="badge-alertas" style="display:none;"></span>
+  </div>
+  <div class="sidebar-section">Dados</div>
+  <div class="nav-item" onclick="nav('depositos')" id="nav-depositos">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Depósitos
+  </div>
+  <div class="sidebar-bottom">Sistema acadêmico · 5º Período<br>Engenharia de Software</div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="page-title">Dashboard</h1>
+      <p id="page-sub">Visão geral do estoque</p>
+    </div>
+    <div class="topbar-right" id="topbar-actions"></div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="metrics" id="metrics-grid"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><h3>Alertas ativos</h3></div>
+          <div class="card-body" id="dash-alertas-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Últimas movimentações</h3></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Produto</th><th>Tipo</th><th>Qtd</th><th>Hora</th></tr></thead>
+            <tbody id="dash-mov-body"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Produtos por status</h3></div>
+        <div class="table-wrap">
+          <table><thead><tr><th>SKU</th><th>Nome</th><th>Depósito</th><th>Estoque</th><th>Mínimo</th><th>Status</th></tr></thead>
+          <tbody id="dash-produtos-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUTOS -->
+    <div id="page-produtos" class="page">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="search-produtos" placeholder="Buscar por nome ou SKU..." oninput="renderProdutos()">
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-primary" onclick="openProdutoModal()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo produto
+          </button>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="table-wrap">
+          <table><thead><tr><th>SKU</th><th>Nome</th><th>Unidade</th><th>Estoque atual</th><th>Mínimo</th><th>Depósito</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-produtos"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOVIMENTAÇÕES -->
+    <div id="page-movimentacoes" class="page">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="search-mov" placeholder="Buscar produto ou responsável..." oninput="renderMovimentacoes()">
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-success" onclick="openMovModal('entrada')">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            Entrada
+          </button>
+          <button class="btn btn-danger" onclick="openMovModal('saida')">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            Saída
+          </button>
+          <button class="btn" onclick="openMovModal('ajuste')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            Ajuste
+          </button>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="table-wrap">
+          <table><thead><tr><th>#</th><th>Data/Hora</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Observação</th><th>Responsável</th></tr></thead>
+          <tbody id="tbody-mov"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="page-alertas" class="page">
+      <div id="alertas-body"></div>
+    </div>
+
+    <!-- DEPÓSITOS -->
+    <div id="page-depositos" class="page">
+      <div class="toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="search-dep" placeholder="Buscar depósito..." oninput="renderDepositos()">
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn btn-primary" onclick="openDepositoModal()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo depósito
+          </button>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="table-wrap">
+          <table><thead><tr><th>Nome</th><th>Localização</th><th>Responsável</th><th>Produtos</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-depositos"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL PRODUTO -->
+<div class="modal-overlay" id="modal-produto">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-prod-title">Novo produto</h3>
+      <button class="btn btn-icon" onclick="closeModal('produto')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-prod-id">
+      <div class="form-grid">
+        <div class="form-group"><label>SKU *</label><input id="p-sku" placeholder="Ex: PROD-001"></div>
+        <div class="form-group"><label>Nome do produto *</label><input id="p-nome" placeholder="Nome completo"></div>
+      </div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label>Unidade</label>
+          <select id="p-unidade"><option>un</option><option>kg</option><option>g</option><option>L</option><option>ml</option><option>cx</option><option>m</option><option>m²</option><option>pç</option></select>
+        </div>
+        <div class="form-group"><label>Estoque inicial</label><input id="p-estoque" type="number" min="0" value="0"></div>
+        <div class="form-group"><label>Estoque mínimo</label><input id="p-minimo" type="number" min="0" value="5"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Depósito</label>
+          <select id="p-deposito"></select>
+        </div>
+        <div class="form-group"><label>Categoria</label>
+          <select id="p-categoria"><option>Geral</option><option>Eletrônicos</option><option>Materiais</option><option>Ferramentas</option><option>Escritório</option><option>Limpeza</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('produto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProduto()">Salvar produto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MOVIMENTAÇÃO -->
+<div class="modal-overlay" id="modal-mov">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-mov-title">Nova entrada</h3>
+      <button class="btn btn-icon" onclick="closeModal('mov')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="m-tipo">
+      <div class="form-grid form-grid-1">
+        <div class="form-group"><label>Produto *</label><select id="m-produto"></select></div>
+      </div>
+      <div id="m-estoque-atual" style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Quantidade *</label><input id="m-qtd" type="number" min="1" value="1"></div>
+        <div class="form-group"><label>Responsável *</label><input id="m-resp" placeholder="Nome do responsável"></div>
+      </div>
+      <div class="form-grid form-grid-1">
+        <div class="form-group"><label>Observação</label><input id="m-obs" placeholder="Opcional — pedido, motivo, etc."></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('mov')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMov()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DEPÓSITO -->
+<div class="modal-overlay" id="modal-deposito">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-dep-title">Novo depósito</h3>
+      <button class="btn btn-icon" onclick="closeModal('deposito')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-dep-id">
+      <div class="form-grid form-grid-1">
+        <div class="form-group"><label>Nome do depósito *</label><input id="d-nome" placeholder="Ex: Depósito A"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Localização</label><input id="d-local" placeholder="Ex: Bloco B, Sala 3"></div>
+        <div class="form-group"><label>Responsável</label><input id="d-resp" placeholder="Nome do responsável"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('deposito')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDeposito()">Salvar depósito</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ===== ESTADO =====
+let depositos = [
+  { id:1, nome:'Depósito A', localizacao:'Bloco A, Térreo', responsavel:'Carlos M.' },
+  { id:2, nome:'Depósito B', localizacao:'Bloco B, 2º Andar', responsavel:'Ana P.' },
+  { id:3, nome:'CD Central', localizacao:'Galpão Principal', responsavel:'Roberto L.' },
+];
+
+let produtos = [
+  { id:1, sku:'PROD-001', nome:'Parafuso M6', unidade:'cx', estoque:120, minimo:20, deposito:'Depósito A', categoria:'Materiais' },
+  { id:2, sku:'PROD-002', nome:'Porca M6', unidade:'cx', estoque:8, minimo:20, deposito:'Depósito A', categoria:'Materiais' },
+  { id:3, sku:'PROD-003', nome:'Cabo HDMI 2m', unidade:'un', estoque:0, minimo:5, deposito:'Depósito B', categoria:'Eletrônicos' },
+  { id:4, sku:'PROD-004', nome:'Papel A4 (resma)', unidade:'cx', estoque:45, minimo:10, deposito:'CD Central', categoria:'Escritório' },
+  { id:5, sku:'PROD-005', nome:'Fita adesiva', unidade:'un', estoque:3, minimo:15, deposito:'Depósito B', categoria:'Escritório' },
+  { id:6, sku:'PROD-006', nome:'Luva de proteção', unidade:'pç', estoque:30, minimo:10, deposito:'CD Central', categoria:'Ferramentas' },
+];
+
+let movimentacoes = [
+  { id:1, produtoId:1, tipo:'entrada', qtd:100, obs:'Compra fornecedor XYZ', responsavel:'Carlos M.', data:'11/06/2026 08:30' },
+  { id:2, produtoId:2, tipo:'saida', qtd:12, obs:'Pedido #204', responsavel:'Ana P.', data:'11/06/2026 09:15' },
+  { id:3, produtoId:4, tipo:'entrada', qtd:20, obs:'Reposição mensal', responsavel:'Carlos M.', data:'10/06/2026 14:00' },
+  { id:4, produtoId:5, tipo:'ajuste', qtd:-2, obs:'Avaria no transporte', responsavel:'Roberto L.', data:'10/06/2026 16:45' },
+  { id:5, produtoId:6, tipo:'entrada', qtd:30, obs:'Compra inicial', responsavel:'Roberto L.', data:'09/06/2026 10:00' },
+];
+
+let nextProdId = 7;
+let nextMovId = 6;
+let nextDepId = 4;
+let currentPage = 'dashboard';
+
+// ===== NAVEGAÇÃO =====
+const pageMeta = {
+  dashboard: { title:'Dashboard', sub:'Visão geral do estoque' },
+  produtos: { title:'Produtos', sub:'Cadastro e controle de produtos' },
+  movimentacoes: { title:'Movimentações', sub:'Entradas, saídas e ajustes' },
+  alertas: { title:'Alertas', sub:'Produtos com estoque crítico' },
+  depositos: { title:'Depósitos', sub:'Locais de armazenamento' },
+};
+
+function nav(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('page-title').textContent = pageMeta[page].title;
+  document.getElementById('page-sub').textContent = pageMeta[page].sub;
+  currentPage = page;
+  const renders = { dashboard:renderDashboard, produtos:renderProdutos, movimentacoes:renderMovimentacoes, alertas:renderAlertas, depositos:renderDepositos };
+  if (renders[page]) renders[page]();
+  updateAlertaBadge();
+}
+
+function updateAlertaBadge() {
+  const count = produtos.filter(p => p.estoque < p.minimo).length;
+  const badge = document.getElementById('badge-alertas');
+  if (count > 0) { badge.textContent = count; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+
+// ===== HELPERS =====
+function statusBadge(p) {
+  if (p.estoque === 0) return '<span class="badge badge-out">Zerado</span>';
+  if (p.estoque < p.minimo) return '<span class="badge badge-low">Baixo</span>';
+  return '<span class="badge badge-ok">Normal</span>';
+}
+
+function qtyClass(p) {
+  if (p.estoque === 0) return 'qty-danger';
+  if (p.estoque < p.minimo) return 'qty-warning';
+  return 'qty-ok';
+}
+
+function fmtNow() {
+  const d = new Date();
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function getProduto(id) { return produtos.find(p => p.id === id); }
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const total = produtos.length;
+  const zerado = produtos.filter(p => p.estoque === 0).length;
+  const baixo = produtos.filter(p => p.estoque > 0 && p.estoque < p.minimo).length;
+  const totalItems = produtos.reduce((s, p) => s + p.estoque, 0);
+  document.getElementById('metrics-grid').innerHTML = `
+    <div class="metric-card">
+      <div class="m-icon" style="background:#EEEDFE;color:#534AB7;"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></div>
+      <div class="m-label">Produtos cadastrados</div><div class="m-value">${total}</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-icon" style="background:var(--green-bg);color:var(--green);"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+      <div class="m-label">Total em estoque</div><div class="m-value" style="color:var(--green);">${totalItems.toLocaleString('pt-BR')}</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-icon" style="background:var(--amber-bg);color:var(--amber);"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="m-label">Estoque baixo</div><div class="m-value" style="color:var(--amber);">${baixo}</div>
+    </div>
+    <div class="metric-card">
+      <div class="m-icon" style="background:var(--red-bg);color:var(--red);"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+      <div class="m-label">Estoque zerado</div><div class="m-value" style="color:var(--red);">${zerado}</div>
+    </div>`;
+
+  const alertas = produtos.filter(p => p.estoque < p.minimo);
+  const dal = document.getElementById('dash-alertas-list');
+  if (!alertas.length) {
+    dal.innerHTML = '<div style="color:var(--text-light);font-size:13px;padding:4px 0;">Nenhum alerta no momento.</div>';
+  } else {
+    dal.innerHTML = alertas.slice(0,4).map(p => `
+      <div class="alert-item ${p.estoque===0?'alert-danger':'alert-warning'}" style="margin-bottom:6px;">
+        <svg viewBox="0 0 24 24">${p.estoque===0?'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>':'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'}</svg>
+        <div class="alert-content"><strong>${p.nome}</strong><span>Estoque: ${p.estoque} ${p.unidade} (mín: ${p.minimo})</span></div>
+      </div>`).join('');
+  }
+
+  const mb = document.getElementById('dash-mov-body');
+  const last5 = [...movimentacoes].reverse().slice(0,5);
+  if (!last5.length) { mb.innerHTML = '<tr><td colspan="4"><div class="empty-state" style="padding:20px;"><p>Nenhuma movimentação.</p></div></td></tr>'; }
+  else mb.innerHTML = last5.map(m => {
+    const p = getProduto(m.produtoId);
+    const sign = m.tipo==='saida' ? '-' : '+';
+    const qtd = m.tipo==='ajuste' ? (m.qtd>=0?'+':'')+m.qtd : sign+Math.abs(m.qtd);
+    return `<tr>
+      <td style="font-weight:500;">${p?p.nome:'—'}</td>
+      <td><span class="badge badge-${m.tipo}">${m.tipo.charAt(0).toUpperCase()+m.tipo.slice(1)}</span></td>
+      <td style="font-weight:600;${m.tipo==='saida'?'color:var(--red);':'color:var(--green);'}">${qtd}</td>
+      <td style="color:var(--text-light);font-size:12px;">${m.data.split(' ')[1]}</td>
+    </tr>`;
+  }).join('');
+
+  const pb = document.getElementById('dash-produtos-body');
+  pb.innerHTML = produtos.map(p => `<tr>
+    <td><span class="sku">${p.sku}</span></td>
+    <td style="font-weight:500;">${p.nome}</td>
+    <td style="color:var(--text-muted);">${p.deposito}</td>
+    <td class="${qtyClass(p)}">${p.estoque} <small style="font-weight:400;color:var(--text-light);">${p.unidade}</small></td>
+    <td style="color:var(--text-muted);">${p.minimo}</td>
+    <td>${statusBadge(p)}</td>
+  </tr>`).join('');
+}
+
+// ===== PRODUTOS =====
+function renderProdutos() {
+  const q = document.getElementById('search-produtos').value.toLowerCase();
+  const filtered = produtos.filter(p =>
+    p.nome.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.categoria.toLowerCase().includes(q)
+  );
+  const body = document.getElementById('tbody-produtos');
+  if (!filtered.length) {
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Nenhum produto encontrado.</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = filtered.map(p => `<tr>
+    <td><span class="sku">${p.sku}</span></td>
+    <td><div style="font-weight:500;">${p.nome}</div><div style="font-size:11px;color:var(--text-light);">${p.categoria}</div></td>
+    <td style="color:var(--text-muted);">${p.unidade}</td>
+    <td class="${qtyClass(p)}" style="font-weight:600;">${p.estoque}</td>
+    <td style="color:var(--text-muted);">${p.minimo}</td>
+    <td style="color:var(--text-muted);font-size:12px;">${p.deposito}</td>
+    <td>${statusBadge(p)}</td>
+    <td>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-icon" title="Editar" onclick="editProduto(${p.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="btn btn-icon" style="color:var(--red);" title="Remover" onclick="deleteProduto(${p.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+function openProdutoModal() {
+  document.getElementById('edit-prod-id').value = '';
+  document.getElementById('modal-prod-title').textContent = 'Novo produto';
+  ['p-sku','p-nome','p-estoque','p-minimo'].forEach(id => {
+    document.getElementById(id).value = id==='p-estoque'?'0':id==='p-minimo'?'5':'';
+  });
+  populateDepositoSelect('p-deposito', depositos[0]?.nome);
+  document.getElementById('modal-produto').classList.add('open');
+}
+
+function editProduto(id) {
+  const p = produtos.find(x => x.id===id);
+  if (!p) return;
+  document.getElementById('edit-prod-id').value = p.id;
+  document.getElementById('modal-prod-title').textContent = 'Editar produto';
+  document.getElementById('p-sku').value = p.sku;
+  document.getElementById('p-nome').value = p.nome;
+  document.getElementById('p-unidade').value = p.unidade;
+  document.getElementById('p-estoque').value = p.estoque;
+  document.getElementById('p-minimo').value = p.minimo;
+  document.getElementById('p-categoria').value = p.categoria;
+  populateDepositoSelect('p-deposito', p.deposito);
+  document.getElementById('modal-produto').classList.add('open');
+}
+
+function saveProduto() {
+  const sku = document.getElementById('p-sku').value.trim();
+  const nome = document.getElementById('p-nome').value.trim();
+  if (!sku || !nome) { showToast('Preencha SKU e nome do produto.', 'err'); return; }
+  const estoque = Math.max(0, parseInt(document.getElementById('p-estoque').value)||0);
+  const minimo = Math.max(0, parseInt(document.getElementById('p-minimo').value)||0);
+  const unidade = document.getElementById('p-unidade').value;
+  const deposito = document.getElementById('p-deposito').value;
+  const categoria = document.getElementById('p-categoria').value;
+  const editId = document.getElementById('edit-prod-id').value;
+  if (editId) {
+    const p = produtos.find(x => x.id===parseInt(editId));
+    if (p) Object.assign(p, {sku,nome,unidade,estoque,minimo,deposito,categoria});
+    showToast('Produto atualizado com sucesso!', 'ok');
+  } else {
+    if (produtos.find(p => p.sku===sku)) { showToast('SKU já cadastrado!', 'err'); return; }
+    produtos.push({ id:nextProdId++, sku, nome, unidade, estoque, minimo, deposito, categoria });
+    showToast('Produto cadastrado!', 'ok');
+  }
+  closeModal('produto');
+  renderProdutos();
+  updateAlertaBadge();
+}
+
+function deleteProduto(id) {
+  if (!confirm('Remover este produto?')) return;
+  produtos = produtos.filter(p => p.id!==id);
+  showToast('Produto removido.', 'ok');
+  renderProdutos();
+  updateAlertaBadge();
+}
+
+// ===== MOVIMENTAÇÕES =====
+function renderMovimentacoes() {
+  const q = document.getElementById('search-mov').value.toLowerCase();
+  const filtered = [...movimentacoes].reverse().filter(m => {
+    const p = getProduto(m.produtoId);
+    return !q || (p && p.nome.toLowerCase().includes(q)) || m.responsavel.toLowerCase().includes(q) || m.obs.toLowerCase().includes(q);
+  });
+  const body = document.getElementById('tbody-mov');
+  if (!filtered.length) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><p>Nenhuma movimentação registrada.</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = filtered.map(m => {
+    const p = getProduto(m.produtoId);
+    const qtdDisplay = m.tipo==='ajuste' ? (m.qtd>=0?'+'+ m.qtd: m.qtd) : (m.tipo==='saida'?'-':'+') + Math.abs(m.qtd);
+    const qtdColor = m.tipo==='saida'?'var(--red)':m.tipo==='entrada'?'var(--green)':'var(--blue)';
+    return `<tr>
+      <td style="color:var(--text-light);font-size:12px;font-family:monospace;">#${m.id}</td>
+      <td style="color:var(--text-muted);font-size:12px;">${m.data}</td>
+      <td><span style="font-weight:500;">${p?p.nome:'—'}</span>${p?`<br><span class="sku" style="font-size:10px;">${p.sku}</span>`:''}</td>
+      <td><span class="badge badge-${m.tipo}">${m.tipo.charAt(0).toUpperCase()+m.tipo.slice(1)}</span></td>
+      <td style="font-weight:700;color:${qtdColor};">${qtdDisplay}</td>
+      <td style="color:var(--text-muted);">${m.obs||'—'}</td>
+      <td>${m.responsavel}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openMovModal(tipo) {
+  const sel = document.getElementById('m-produto');
+  sel.innerHTML = produtos.map(p => `<option value="${p.id}">${p.nome} (${p.sku})</option>`).join('');
+  sel.onchange = () => updateEstoqueAtual();
+  document.getElementById('m-qtd').value = 1;
+  document.getElementById('m-resp').value = '';
+  document.getElementById('m-obs').value = '';
+  document.getElementById('m-tipo').value = tipo;
+  const labels = { entrada:'Nova entrada de estoque', saida:'Nova saída de estoque', ajuste:'Ajuste de estoque' };
+  document.getElementById('modal-mov-title').textContent = labels[tipo];
+  updateEstoqueAtual();
+  document.getElementById('modal-mov').classList.add('open');
+}
+
+function updateEstoqueAtual() {
+  const id = parseInt(document.getElementById('m-produto').value);
+  const p = getProduto(id);
+  const el = document.getElementById('m-estoque-atual');
+  el.textContent = p ? `Estoque atual: ${p.estoque} ${p.unidade} — Depósito: ${p.deposito}` : '';
+}
+
+function saveMov() {
+  const produtoId = parseInt(document.getElementById('m-produto').value);
+  const qtd = parseInt(document.getElementById('m-qtd').value)||0;
+  const resp = document.getElementById('m-resp').value.trim();
+  const obs = document.getElementById('m-obs').value.trim();
+  const tipo = document.getElementById('m-tipo').value;
+  if (qtd <= 0) { showToast('Quantidade deve ser maior que zero.', 'err'); return; }
+  if (!resp) { showToast('Informe o responsável.', 'err'); return; }
+  const p = getProduto(produtoId);
+  if (!p) return;
+  const delta = tipo==='saida' ? -qtd : tipo==='ajuste' ? (qtd) : qtd;
+  if (p.estoque + delta < 0) { showToast(`Estoque insuficiente! Disponível: ${p.estoque} ${p.unidade}.`, 'err'); return; }
+  p.estoque += delta;
+  movimentacoes.push({ id:nextMovId++, produtoId, tipo, qtd: tipo==='ajuste'?delta:qtd, obs, responsavel:resp, data:fmtNow() });
+  showToast('Movimentação registrada com sucesso!', 'ok');
+  closeModal('mov');
+  const renders = { movimentacoes:renderMovimentacoes, dashboard:renderDashboard, produtos:renderProdutos };
+  if (renders[currentPage]) renders[currentPage]();
+  updateAlertaBadge();
+}
+
+// ===== ALERTAS =====
+function renderAlertas() {
+  const alertas = produtos.filter(p => p.estoque < p.minimo);
+  const el = document.getElementById('alertas-body');
+  if (!alertas.length) {
+    el.innerHTML = `<div class="card"><div class="card-body"><div class="empty-state"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>Nenhum alerta ativo. Todos os produtos estão com estoque adequado.</p></div></div></div>`;
+    return;
+  }
+  el.innerHTML = `<div style="margin-bottom:16px;font-size:13px;color:var(--text-muted);">${alertas.length} produto(s) necessitam atenção.</div>` +
+  alertas.map(p => `
+    <div class="alert-item ${p.estoque===0?'alert-danger':'alert-warning'}">
+      <svg viewBox="0 0 24 24">${p.estoque===0?'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>':'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'}</svg>
+      <div class="alert-content">
+        <strong>${p.nome} <span style="font-weight:400;font-size:11px;">(${p.sku})</span></strong>
+        <span>Estoque atual: <strong>${p.estoque} ${p.unidade}</strong> · Mínimo configurado: ${p.minimo} ${p.unidade} · Depósito: ${p.deposito} · Categoria: ${p.categoria}</span>
+      </div>
+      <button class="btn btn-success" style="margin-left:auto;" onclick="openMovModal('entrada')">Registrar entrada</button>
+    </div>`).join('');
+}
+
+// ===== DEPÓSITOS =====
+function populateDepositoSelect(selId, selected) {
+  const sel = document.getElementById(selId);
+  sel.innerHTML = depositos.map(d => `<option${d.nome===selected?' selected':''}>${d.nome}</option>`).join('');
+}
+
+function renderDepositos() {
+  const q = document.getElementById('search-dep').value.toLowerCase();
+  const filtered = depositos.filter(d => d.nome.toLowerCase().includes(q) || d.localizacao.toLowerCase().includes(q));
+  const body = document.getElementById('tbody-depositos');
+  if (!filtered.length) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p>Nenhum depósito encontrado.</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = filtered.map(d => {
+    const count = produtos.filter(p => p.deposito===d.nome).length;
+    return `<tr>
+      <td style="font-weight:600;">${d.nome}</td>
+      <td style="color:var(--text-muted);">${d.localizacao}</td>
+      <td>${d.responsavel}</td>
+      <td><span class="badge badge-ok">${count} produto(s)</span></td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-icon" title="Editar" onclick="editDeposito(${d.id})"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="btn btn-icon" style="color:var(--red);" title="Remover" onclick="deleteDeposito(${d.id})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openDepositoModal() {
+  document.getElementById('edit-dep-id').value = '';
+  document.getElementById('modal-dep-title').textContent = 'Novo depósito';
+  document.getElementById('d-nome').value = '';
+  document.getElementById('d-local').value = '';
+  document.getElementById('d-resp').value = '';
+  document.getElementById('modal-deposito').classList.add('open');
+}
+
+function editDeposito(id) {
+  const d = depositos.find(x => x.id===id);
+  if (!d) return;
+  document.getElementById('edit-dep-id').value = d.id;
+  document.getElementById('modal-dep-title').textContent = 'Editar depósito';
+  document.getElementById('d-nome').value = d.nome;
+  document.getElementById('d-local').value = d.localizacao;
+  document.getElementById('d-resp').value = d.responsavel;
+  document.getElementById('modal-deposito').classList.add('open');
+}
+
+function saveDeposito() {
+  const nome = document.getElementById('d-nome').value.trim();
+  if (!nome) { showToast('Informe o nome do depósito.', 'err'); return; }
+  const localizacao = document.getElementById('d-local').value.trim();
+  const responsavel = document.getElementById('d-resp').value.trim();
+  const editId = document.getElementById('edit-dep-id').value;
+  if (editId) {
+    const d = depositos.find(x => x.id===parseInt(editId));
+    if (d) Object.assign(d, {nome, localizacao, responsavel});
+    showToast('Depósito atualizado!', 'ok');
+  } else {
+    depositos.push({ id:nextDepId++, nome, localizacao, responsavel });
+    showToast('Depósito cadastrado!', 'ok');
+  }
+  closeModal('deposito');
+  renderDepositos();
+}
+
+function deleteDeposito(id) {
+  const d = depositos.find(x => x.id===id);
+  if (produtos.find(p => p.deposito===d?.nome)) { showToast('Não é possível remover: há produtos neste depósito.', 'err'); return; }
+  if (!confirm('Remover este depósito?')) return;
+  depositos = depositos.filter(x => x.id!==id);
+  showToast('Depósito removido.', 'ok');
+  renderDepositos();
+}
+
+// ===== MODAIS =====
+function closeModal(type) {
+  document.getElementById('modal-' + type).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg, type) {
+  clearTimeout(toastTimer);
+  const t = document.getElementById('toast');
+  const icon = type==='ok'
+    ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
+    : '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  t.className = 'show ' + type;
+  t.innerHTML = icon + msg;
+  toastTimer = setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// ===== INIT =====
+populateDepositoSelect('p-deposito');
+renderDashboard();
+updateAlertaBadge();
+</script>
+</body>
+</html>
